@@ -1,0 +1,6 @@
+[component_0]
+type = Library
+name = Cpu0Info
+parent = Cpu0
+required_libraries = Support
+add_to_library_groups = Cpu0
