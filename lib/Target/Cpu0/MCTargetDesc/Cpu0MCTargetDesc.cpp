@@ -14,7 +14,7 @@
 
 using namespace llvm;
 
-/*
+
 #define GET_INSTRINFO_MC_DESC
 #include "Cpu0GenInstrInfo.inc"
 
@@ -23,7 +23,7 @@ using namespace llvm;
 
 #define GET_REGINFO_MC_DESC
 #include "Cpu0GenRegisterInfo.inc"
-*/
+
 extern "C" void LLVMInitializeCpu0TargetMC()
 {
     

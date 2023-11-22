@@ -12,7 +12,7 @@ namespace llvm {
     Target &getTheCpu0Target();
     Target &getTheCpu0elTarget();
 }
-/*
+
 #define GET_REGINFO_ENUM
 #include "Cpu0GenRegisterInfo.inc"
 
@@ -22,5 +22,5 @@ namespace llvm {
 #define GET_SUBTARGETINFO_ENUM
 #include "Cpu0GenSubtargetInfo.inc"
 
-*/
+
 #endif

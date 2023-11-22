@@ -2,6 +2,12 @@ def SDT_Cpu0Ret : SDTypeProfile<0,1,[SDTCisInt<0>]>;
 
 def Cpu0Ret : SDNode<"Cpu0ISD::Ret",SDTNone,[SDNPHasChain,SDNPOptInGlue,SDNPVariadic]>;
 
+def EnableOverflow  : Predicate<"Subtarget->enableOverflow()">;
+def DisableOverflow : Predicate<"Subtarget->disableOverflow()">;
+
+def HasCmp          : Predicate<"Subtarget->hasCmp()">;
+def HasSlt          : Predicate<"Subtarget->hasSlt()">;
+
 include "Cpu0InstrFormats.td"
 
 
