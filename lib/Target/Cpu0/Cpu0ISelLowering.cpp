@@ -72,6 +72,106 @@ Cpu0TargetLowering::LowerReturn(SDValue Chain,
                                 const SmallVectorImpl<ISD::OutputArg> &Outs,
                                 const SmallVectorImpl<SDValue> &OutsVals,
                                 const SDLoc &DL, SelectionDAG &DAG) const {
-  return DAG.getNode(Cpu0ISD::Ret, DL, MVT::Other, Chain,
-                     DAG.getRegister(Cpu0::LR, MVT::i32));
+
+    SmallVector<CCValAssign,16> RVLocs;
+    MachineFunction &MF = DAG.getMachineFunction();
+
+    CCState CCInfo(CallConv,IsVarArg,MF,RVLocs,*DAG.getContext());
+    Cpu0CC Cpu0CCInfo(CallConv,ABI.IsO32(),CCInfo);
+    Cpu0CCInfo.analyzeReturn(Outs,Subtarget.abiUsesSoftFloat(),MF.getFunction().getReturnType());
+
+    SDValue Flag;
+    SmallVector<SDValue,4> RetOps(1,Chain);
+
+    for(unsigned i = 0; i != RVLocs.size();++i)
+    {
+        SDValue Val = OutsVals[i];
+        CCValAssign &VA = RVLocs[i];
+        assert(VA.isRegLoc() && "Can only return in registers!");
+        
+        if(RVLocs[i].getValVT() != RVLocs[i].getLocVT())
+            Val = DAG.getNode(ISD::BITCAST,DL,RVLocs[i].getLocVT(),Val);
+        
+        Chain = DAG.getCopyToReg(Chain,DL,VA.getLocReg(),Val,Flag);
+
+        Flag = Chain.getValue(1);
+        RetOps.push_back(DAG.getRegister(VA.getLocReg(),VA.getLocVT()));
+    }
+
+    if(MF.getFunction().hasStructRetAttr())
+    {
+        Cpu0MachineFunctionInfo *Cpu0FI = MF.getInfo<Cpu0MachineFunctionInfo>();
+        unsigned Reg = Cpu0FI->getSRetReturnReg();
+        
+        if(!Reg)
+            llvm_unreachable("sret virtual register not created in the entry block");
+        SDValue Val = DAG.getCopyFromReg(Chain,DL,Reg,getPointerTy(DAG.getDataLayout()));
+        unsigned V0 = Cpu0::V0;
+        
+        Chain = DAG.getCopyToReg(Chain,DL,V0,Val,Flag);
+        Flag = Chain.getValue(1);
+        RetOps.push_back(DAG.getRegister(V0,getPointerTy(DAG.getDataLayout())));
+    }
+
+    RetOps[0] = Chain;
+
+    if(Flag.getNode())
+        RetOps.push_back(Flag);
+
+
+    return DAG.getNode(Cpu0ISD::Ret,DL,MVT::Other,RetOps);
+}
+
+template<typename Ty>
+void Cpu0TargetLowering::Cpu0CC::analyzeReturn(const SmallVectorImpl<Ty> &RetVals,bool IsSoftFloat,const SDNode* CallNode,const Type* RetTy) const
+{
+    CCAssignFn* Fn;
+
+    Fn = RetCC_Cpu0;
+
+    for(unsigned I=0,E=RetVals.size();I<E;++I)
+    {
+        MVT VT=RetVals[I].VT;
+        ISD::ArgFlagsTy Flags = RetVals[I].Flags;
+        MVT RegVT = this->getRegVT(VT,RetTy,CallNode,IsSoftFloat);
+
+        if(Fn(I,VT,RegVT,CCValAssign::Full,Flags,this->CCInfo))
+        {
+            #ifndef NODEBUG
+                dbgs()<<"Call result $"<< I <<" hash unhandled type" << EVT(VT).getEVTString()<<"\n";
+            #endif
+            llvm_unreachable(nullptr);
+        }
+    }
+}
+
+void Cpu0TargetLowering::Cpu0CC::analyzeCallResult(const SmallVectorImpl<ISD::InputArg> &Ins,bool IsSoftFloat,const SDNode* CallNode,const Type* RetTy) const
+{
+    analyzeReturn(Ins,IsSoftFloat,CallNode,RetTy);
+}
+
+void Cpu0TargetLowering::Cpu0CC::analyzeReturn(const SmallVectorImpl<ISD::OutputArg> &Outs,bool IsSoftFloat,const Type* RetTy) const
+{
+    analyzeReturn(Outs,IsSoftFloat,nullptr,RetTy);
+}
+
+unsigned Cpu0TargetLowering::Cpu0CC::reservedArgArea() const
+{
+    return (IsO32 && (CallConv != CallingConv::Fast)) ? 8 : 0;
+}
+
+MVT Cpu0TargetLowering::Cpu0CC::getRegVT(MVT VT,const Type* OrigTy,const SDNode* CallNode,bool IsSoftFloat) const
+{
+    if(IsSoftFloat || IsO32)
+    {
+        return VT;
+    }
+    return VT;
+}
+
+Cpu0TargetLowering::Cpu0CC::Cpu0CC(
+  CallingConv::ID CC, bool IsO32_, CCState &Info,
+  Cpu0CC::SpecialCallingConvType SpecialCallingConv_)
+  : CCInfo(Info), CallConv(CC), IsO32(IsO32_) {
+  CCInfo.AllocateStack(reservedArgArea(), 1);
 }

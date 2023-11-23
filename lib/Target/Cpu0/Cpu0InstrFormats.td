@@ -73,3 +73,9 @@ class FJ<bits<8> op,dag outs,dag ins,string asmStr,list<dag> pattern,InstrItinCl
 
     let Inst{23-0} = addr;
 }
+
+class Cpu0Pseudo<dag outs,dag ins,string asmstr,list<dag> pattern> : Cpu0Inst<outs,ins,asmstr,pattern,IIPseudo,Pseudo>
+{
+    let isCodeGenOnly = 1;
+    let isPseudo = 1;
+}

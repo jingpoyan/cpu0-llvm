@@ -119,4 +119,7 @@ let addr=0 in
     def NOP : FJ<0,(outs),(ins),"nop",[],IIAlu>;
 
 
+let isReturn=1,isTerminator=1,hasDelaySlot=1,isBarrier=1,hasCtrlDep=1 in
+def RetLR : Cpu0Pseudo<(outs),(ins),"",[(Cpu0Ret)]>;
+
 def : Pat<(i32 immSExt16:$in),(ADDiu ZERO,imm:$in)>;

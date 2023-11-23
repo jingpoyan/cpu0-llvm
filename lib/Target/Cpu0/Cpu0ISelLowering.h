@@ -52,6 +52,42 @@ namespace llvm{
             
             const Cpu0Subtarget &Subtarget;
             const Cpu0ABIInfo &ABI;
+
+            class Cpu0CC
+            {
+                public:
+                    enum SpecialCallingConvType
+                    {
+                        NoSpecialCallingConv
+                    };
+
+                    Cpu0CC(CallingConv::ID CallConv,bool IsO32,CCState &Info,SpecialCallingConvType SpecialCallingConv = NoSpecialCallingConv);
+
+                    void analyzeCallResult(const SmallVectorImpl<ISD::InputArg> &Ins,bool IsSoftFloat,const SDNode *CallNode,const Type *RetTy) const;
+
+                    void analyzeReturn(const SmallVectorImpl<ISD::OutputArg> &Outs,bool IsSoftFloat,const Type *RetTy) const;
+
+                    const CCState &getCCInfo() const {return CCInfo;}
+                    
+                    bool hashByValArg() const {return !ByValArgs.empty();}
+
+                    unsigned reservedArgArea() const;
+
+                    typedef SmallVectorImpl<ByValArgInfo>::const_iterator byval_iterator;
+                    byval_iterator byval_begin() const {return ByValArgs.begin();}
+                    byval_iterator byval_end() const {return ByValArgs.end();}
+
+                private:
+                    MVT getRegVT(MVT VT,const Type *OrigTy,const SDNode *CallNode,bool IsSoftFloat) const;
+
+                    template<typename Ty> void analyzeReturn(const SmallVectorImpl<Ty> &RetVals,bool IsSoftFloat,const SDNode *CallNode,const Type* RetTy) const;
+
+                    CCState &CCInfo;
+                    CallingConv::ID CallConv;
+                    bool IsO32;
+                    SmallVector<ByValArgInfo,2> ByValArgs;
+            };
+
         private:
             SDValue LowerGlobalAddress(SDValue Op,SelectionDAG &DAG) const;
             SDValue LowerFormalArguments(SDValue Chain,

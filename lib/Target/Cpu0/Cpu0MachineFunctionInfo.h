@@ -16,13 +16,26 @@ namespace llvm{
     class Cpu0MachineFunctionInfo : public MachineFunctionInfo{
         public:
 
-            Cpu0MachineFunctionInfo(MachineFunction &MF) : MF(MF),VarArgsFrameIndex(0),MaxCallFrameSize(0),EmitNOAT(false)
+            Cpu0MachineFunctionInfo(MachineFunction &MF) : MF(MF),VarArgsFrameIndex(0),SRetReturnReg(0),CallsEhReturn(false),CallsEhDwarf(false),MaxCallFrameSize(0),EmitNOAT(false)
             {
 
             }
+
             ~Cpu0MachineFunctionInfo();
 
-            int getVarArgsFrameIndex() const {
+            unsigned getSRetReturnReg() const 
+            {
+                return SRetReturnReg;
+            }
+            
+            void setSRetReturnReg(unsigned Reg)
+            {
+                SRetReturnReg = Reg;
+            }
+
+
+            int getVarArgsFrameIndex() const 
+            {
                 return VarArgsFrameIndex;
             }
 
@@ -31,9 +44,22 @@ namespace llvm{
                 VarArgsFrameIndex = Index;
             }
 
-            bool getEmitNOAT() const{
+            bool hasByvalArg() const
+            {
+                return HasByvalArg;
+            }
+            
+            void setFormalArgInfo(unsigned Size,bool HasByval)
+            {
+                IncomingArgSize = Size;
+                HasByvalArg = HasByval;
+            }
+
+            bool getEmitNOAT() const
+            {
                 return EmitNOAT;
             }
+
             void setEmitNOAT()
             {
                 EmitNOAT = true;
@@ -46,6 +72,13 @@ namespace llvm{
             int VarArgsFrameIndex;
             unsigned MaxCallFrameSize;
             bool EmitNOAT;
+
+            unsigned SRetReturnReg;
+            bool HasByvalArg;
+            unsigned IncomingArgSize;
+            bool CallsEhReturn;
+            bool CallsEhDwarf;
+            bool EhDataRegFI[2];
     };
 }
 
