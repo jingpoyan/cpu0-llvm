@@ -16,7 +16,7 @@ namespace llvm{
     class Cpu0MachineFunctionInfo : public MachineFunctionInfo{
         public:
 
-            Cpu0MachineFunctionInfo(MachineFunction &MF) : MF(MF),VarArgsFrameIndex(0),MaxCallFrameSize(0)
+            Cpu0MachineFunctionInfo(MachineFunction &MF) : MF(MF),VarArgsFrameIndex(0),MaxCallFrameSize(0),EmitNOAT(false)
             {
 
             }
@@ -31,12 +31,21 @@ namespace llvm{
                 VarArgsFrameIndex = Index;
             }
 
+            bool getEmitNOAT() const{
+                return EmitNOAT;
+            }
+            void setEmitNOAT()
+            {
+                EmitNOAT = true;
+            }
+
         private:
             virtual void anchor();
 
             MachineFunction &MF;
             int VarArgsFrameIndex;
             unsigned MaxCallFrameSize;
+            bool EmitNOAT;
     };
 }
 

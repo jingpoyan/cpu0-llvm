@@ -1,11 +1,13 @@
 [common]
 subdirectories =
   MCTargetDesc TargetInfo
+  InstPrinter
 
 [component_0]
 type = TargetGroup
 name = Cpu0
 parent = Target
+has_asmprinter = 1
 
 [component_1]
 type = Library
@@ -18,4 +20,6 @@ required_libraries =
                      SelectionDAG
                      Support
                      Target
+                     AsmPrinter
+                     Cpu0AsmPrinter
 add_to_library_groups = Cpu0

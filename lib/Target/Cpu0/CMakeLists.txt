@@ -10,6 +10,10 @@ tablegen(LLVM Cpu0GenSubtargetInfo.inc -gen-subtarget)
 tablegen(LLVM Cpu0GenMCPseudoLowering.inc -gen-pseudo-lowering)
 tablegen(LLVM Cpu0GenDAGISel.inc -gen-dag-isel)
 tablegen(LLVM Cpu0GenCallingConv.inc -gen-callingconv)
+tablegen(LLVM Cpu0GenCodeEmitter.inc -gen-emitter)
+tablegen(LLVM Cpu0GenMCCodeEmitter.inc -gen-emitter)
+tablegen(LLVM Cpu0GenAsmWriter.inc -gen-asm-writer)
+
 
 # Cpu0CommonTableGen must be defined
 add_public_tablegen_target(Cpu0CommonTableGen)
@@ -28,7 +32,10 @@ Cpu0SEISelLowering.cpp
 Cpu0SERegisterInfo.cpp
 Cpu0Subtarget.cpp
 Cpu0TargetObjectFile.cpp
+Cpu0AsmPrinter.cpp
+Cpu0MCInstLower.cpp
 )
 
 add_subdirectory(TargetInfo)
 add_subdirectory(MCTargetDesc)
+add_subdirectory(InstPrinter)
