@@ -22,7 +22,8 @@ void Cpu0InstPrinter::printRegName(raw_ostream &OS,unsigned RegNo) const {
 void Cpu0InstPrinter::printInst(const MCInst *MI,raw_ostream &O,StringRef Annot,const MCSubtargetInfo &STI)
 {
     if(!printAliasInstr(MI,O))
-        printAnnotation(O,Annot);
+        printInstruction(MI,O);
+    printAnnotation(O,Annot);
 }
 
 void Cpu0InstPrinter::printOperand(const MCInst* MI,unsigned OpNo,raw_ostream &O)

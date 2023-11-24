@@ -16,7 +16,7 @@ namespace llvm{
     class Cpu0MachineFunctionInfo : public MachineFunctionInfo{
         public:
 
-            Cpu0MachineFunctionInfo(MachineFunction &MF) : MF(MF),VarArgsFrameIndex(0),SRetReturnReg(0),CallsEhReturn(false),CallsEhDwarf(false),MaxCallFrameSize(0),EmitNOAT(false)
+            Cpu0MachineFunctionInfo(MachineFunction &MF) : MF(MF), SRetReturnReg(0), CallsEhReturn(false), VarArgsFrameIndex(0), CallsEhDwarf(false), MaxCallFrameSize(0), EmitNOAT(false)
             {
 
             }
@@ -63,6 +63,51 @@ namespace llvm{
             void setEmitNOAT()
             {
                 EmitNOAT = true;
+            }
+
+
+            unsigned getIncomingArgSize() const 
+            {
+                 return IncomingArgSize; 
+            }
+
+            bool callsEhReturn() const 
+            { 
+                return CallsEhReturn; 
+            }
+
+
+            void setCallsEhReturn() 
+            {
+                 CallsEhReturn = true; 
+            }
+
+            bool callsEhDwarf() const 
+            {
+                 return CallsEhDwarf; 
+            }
+
+            void setCallsEhDwarf() 
+            {
+                 CallsEhDwarf = true; 
+            }
+
+
+            void createEhDataRegsFI();
+
+            int getEhDataRegFI(unsigned Reg) const 
+            {
+                 return EhDataRegFI[Reg]; 
+            }
+
+            unsigned getMaxCallFrameSize() const 
+            {
+                 return MaxCallFrameSize; 
+            }
+
+            void setMaxCallFrameSize(unsigned S) 
+            {
+                 MaxCallFrameSize = S; 
             }
 
         private:
