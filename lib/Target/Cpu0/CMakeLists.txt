@@ -36,6 +36,7 @@ Cpu0AsmPrinter.cpp
 Cpu0MCInstLower.cpp
 Cpu0ISelDAGToDAG.cpp
 Cpu0SEISelDAGToDAG.cpp
+Cpu0AnalyzeImmediate.cpp
 )
 
 add_subdirectory(TargetInfo)

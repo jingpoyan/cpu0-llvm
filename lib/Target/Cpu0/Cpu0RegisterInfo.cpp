@@ -22,13 +22,13 @@ Cpu0RegisterInfo::Cpu0RegisterInfo(const Cpu0Subtarget &ST) : Cpu0GenRegisterInf
 
 const MCPhysReg* Cpu0RegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const
 {
-    return CSR_032_SaveList;
+    return CSR_O32_SaveList;
 }
 
 const uint32_t *
 Cpu0RegisterInfo::getCallPreservedMask(const MachineFunction &MF,
                                        CallingConv::ID) const {
-  return CSR_032_RegMask;
+  return CSR_O32_RegMask;
 }
 
 BitVector Cpu0RegisterInfo::getReservedRegs(const MachineFunction &MF) const
@@ -49,6 +49,56 @@ BitVector Cpu0RegisterInfo::getReservedRegs(const MachineFunction &MF) const
 
 void Cpu0RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,int SPAdj,unsigned FIOperandNum,RegScavenger *RS) const
 {
+  MachineInstr &MI = *II;
+  MachineFunction &MF = *MI.getParent()->getParent();
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+  Cpu0MachineFunctionInfo *Cpu0FI = MF.getInfo<Cpu0MachineFunctionInfo>();
+
+  unsigned i = 0;
+  while (!MI.getOperand(i).isFI()) {
+    ++i;
+    assert(i < MI.getNumOperands() &&
+           "Instr doesn't have FrameIndex operand!");
+  }
+
+  LLVM_DEBUG(errs() << "\nFunction : " << MF.getFunction().getName() << "\n";
+             errs() << "<---------->\n" << MI);
+
+  int FrameIndex = MI.getOperand(i).getIndex();
+  uint64_t stackSize = MF.getFrameInfo().getStackSize();
+  int64_t spOffset = MF.getFrameInfo().getObjectOffset(FrameIndex);
+
+  LLVM_DEBUG(errs() << "FrameIndex : " << FrameIndex << "\n"
+                    << "spOffset   : " << spOffset   << "\n"
+                    << "stackSize  : " << stackSize  << "\n");
+
+  const std::vector<CalleeSavedInfo> &CSI = MFI.getCalleeSavedInfo();
+  int MinCSFI = 0;
+  int MaxCSFI = -1;
+
+  if (CSI.size()) {
+    MinCSFI = CSI[0].getFrameIdx();
+    MaxCSFI = CSI[CSI.size() - 1].getFrameIdx();
+  }
+
+  unsigned FrameReg;
+
+  FrameReg = Cpu0::SP;
+
+  int64_t Offset;
+  Offset = spOffset + (int64_t)stackSize;
+
+  Offset += MI.getOperand(i+1).getImm();
+
+  LLVM_DEBUG(errs() << "Offset : " << Offset << "\n"
+                    << "<---------->\n");
+
+  if (!MI.isDebugValue() && !isInt<16>(Offset)) {
+    assert("(!MI.isDebugValue() && !isInt<16>(Offset))");
+  }
+
+  MI.getOperand(i).ChangeToRegister(FrameReg, false);
+  MI.getOperand(i+1).ChangeToImmediate(Offset);
 
 }
 
