@@ -41,6 +41,8 @@ namespace llvm{
             static const Cpu0TargetLowering* create(const Cpu0TargetMachine &TM,const Cpu0Subtarget &STI);
 
             const char* getTargetNodeName(unsigned Opcode) const override;
+
+            SDValue PerformDAGCombine(SDNode *N,DAGCombinerInfo &DCI) const override;
         protected:
             struct ByValArgInfo
             {

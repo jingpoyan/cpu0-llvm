@@ -13,6 +13,9 @@ namespace llvm{
         public:
             explicit Cpu0SEInstrInfo(const Cpu0Subtarget &STI);
             const Cpu0RegisterInfo &getRegisterInfo() const override;    
+
+            void copyPhysReg(MachineBasicBlock &MBB,MachineBasicBlock::iterator I,const DebugLoc &DL,unsigned DestReg,unsigned SrcReg,bool KillSrc) const override;
+
             bool expandPostRAPseudo(MachineInstr &MI) const override;
             void storeRegToStack(MachineBasicBlock &MBB,
                        MachineBasicBlock::iterator MI,

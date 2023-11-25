@@ -47,7 +47,7 @@ bool Cpu0DAGToDAGISel::SelectAddr(SDNode *Parent,SDValue Addr,SDValue &Base,SDVa
 
         if(VT.getSizeInBits()/8 > LS->getAlignment())
         {
-            assert("Unaligned loads/stores not supported for this type.");
+            assert(false && "Unaligned loads/stores not supported for this type.");
             if(VT == MVT::f32)
                 return false;
         }

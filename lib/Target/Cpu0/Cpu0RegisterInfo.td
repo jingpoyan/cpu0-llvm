@@ -25,6 +25,10 @@ let Namespace = "Cpu0" in {
 
   def PC   : Cpu0C0Reg<0, "pc">,    DwarfRegNum<[20]>;
   def EPC  : Cpu0C0Reg<1, "epc">,   DwarfRegNum<[21]>;
+
+
+  def HI   : Cpu0Reg<0,"ac0">, DwarfRegNum<[18]>;
+  def LO   : Cpu0Reg<0,"ac0">, DwarfRegNum<[19]>;
 }
 
 
@@ -40,3 +44,4 @@ def CPURegs : RegisterClass<"Cpu0", [i32], 32, (add
 def SR : RegisterClass<"Cpu0", [i32], 32, (add SW)>;
 def C0Regs : RegisterClass<"Cpu0", [i32], 32, (add PC, EPC)>;
 def GPROut : RegisterClass<"Cpu0", [i32], 32, (add (sub CPURegs, SW))>;
+def HILO   : RegisterClass<"Cpu0", [i32], 32, (add HI,LO)>;
