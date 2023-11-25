@@ -16,3 +16,6 @@ documentation setup.
 If you are writing a package for LLVM, see docs/Packaging.rst for our
 suggestions.
 
+Build Example(Ubuntu 22.04 LTS)
+================================
+cmake -G "Ninja" -DCMAKE_C_COMPILER=gcc-9 -DCMAKE_CXX_COMPILER=g++-9 -DCMAKE_EXPORT_COMPILE_COMMANDS=YES -DBUILD_SHARED_LIBS=ON -DLLVM_CCACHE_BUILD=OFF -DLLVM_APPEND_VC_REV=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD="Cpu0" -DCMAKE_BUILD_TYPE=Release ../cpu0-llvm
