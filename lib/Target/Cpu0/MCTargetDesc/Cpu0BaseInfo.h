@@ -5,7 +5,7 @@
 #include "llvm/MC/MCExpr.h"
 #include "llvm/Support/DataTypes.h"
 #include "llvm/Support/ErrorHandling.h"
-
+#include "Cpu0FixupKinds.h"
 
 namespace llvm{
     namespace Cpu0II
