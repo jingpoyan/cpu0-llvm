@@ -63,3 +63,11 @@ void Cpu0InstPrinter::printMemOperand(const MCInst *MI,int OpNum,raw_ostream &O)
     printOperand(MI,OpNum,O);
     O<<")";
 }
+
+void Cpu0InstPrinter::printMemOperandEA(const MCInst *MI,int opNum,raw_ostream &O)
+{
+    printOperand(MI,opNum,O);
+    O << ", ";
+    printOperand(MI,opNum+1,O);
+    return;
+}

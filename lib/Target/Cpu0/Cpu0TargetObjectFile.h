@@ -11,8 +11,17 @@ namespace llvm{
         MCSection *SmallBSSSection;
         const Cpu0TargetMachine* TM;
 
+        bool IsGlobalInSmallSection(const GlobalObject *GO,
+                              const TargetMachine &TM, SectionKind Kind) const;
+        bool IsGlobalInSmallSectionImpl(const GlobalObject *GO,
+                                        const TargetMachine &TM) const;
         public:
             void Initialize(MCContext &Ctx,const TargetMachine &TM) override;
+            bool IsGlobalInSmallSection(const GlobalObject *GO,
+                              const TargetMachine &TM) const;
+
+            MCSection *SelectSectionForGlobal(const GlobalObject *GO, SectionKind Kind,
+                                                const TargetMachine &TM) const override;
     };
 }
 #endif

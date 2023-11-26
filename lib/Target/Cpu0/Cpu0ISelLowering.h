@@ -2,9 +2,11 @@
 #define LLVM_LIB_TARGET_CPU0_CPU0ISELLOWERING_H
 
 #include "MCTargetDesc/Cpu0ABIInfo.h"
+#include "MCTargetDesc/Cpu0BaseInfo.h"
 #include "Cpu0.h"
 #include "llvm/CodeGen/CallingConvLower.h"
 #include "llvm/CodeGen/SelectionDAG.h"
+#include "llvm/CodeGen/SelectionDAGNodes.h"
 #include "llvm/CodeGen/TargetLowering.h"
 #include "llvm/IR/Function.h"
 #include <deque>
@@ -40,10 +42,57 @@ namespace llvm{
 
             static const Cpu0TargetLowering* create(const Cpu0TargetMachine &TM,const Cpu0Subtarget &STI);
 
+            SDValue LowerOperation(SDValue Op,SelectionDAG &DAG) const override;
+
             const char* getTargetNodeName(unsigned Opcode) const override;
 
             SDValue PerformDAGCombine(SDNode *N,DAGCombinerInfo &DCI) const override;
+
+            EVT getSetCCResultType(const DataLayout&,LLVMContext &,EVT VT) const override;
+
+            bool isOffsetFoldingLegal(const GlobalAddressSDNode* GA)const override;
         protected:
+            SDValue getGlobalReg(SelectionDAG &DAG,EVT Ty) const;
+            
+            template<class NodeTy>
+            SDValue getAddrLocal(NodeTy *N,EVT Ty,SelectionDAG &DAG) const
+            {
+                SDLoc DL(N);
+                unsigned GOTFlag = Cpu0II::MO_GOT;
+                SDValue GOT = DAG.getNode(Cpu0ISD::Wrapper, DL, Ty, getGlobalReg(DAG, Ty),getTargetNode(N, Ty, DAG, GOTFlag));
+                SDValue Load = DAG.getLoad(Ty, DL, DAG.getEntryNode(), GOT,MachinePointerInfo::getGOT(DAG.getMachineFunction()));
+                unsigned LoFlag = Cpu0II::NO_ABS_LO;
+                SDValue Lo = DAG.getNode(Cpu0ISD::Lo, DL, Ty,getTargetNode(N, Ty, DAG, LoFlag));
+                return DAG.getNode(ISD::ADD, DL, Ty, Load, Lo);            
+            }
+
+            template<class NodeTy>
+            SDValue getAddrGlobal(NodeTy* N,EVT Ty,SelectionDAG &DAG,unsigned Flag,SDValue Chain,const MachinePointerInfo &PtrInfo) const 
+            {
+                SDLoc DL(N);
+                SDValue Tgt = DAG.getNode(Cpu0ISD::Wrapper,DL,Ty,getGlobalReg(DAG,Ty),getTargetNode(N,Ty,DAG,Flag));
+                return DAG.getLoad(Ty,DL,Chain,Tgt,PtrInfo);
+            }
+
+            template<class NodeTy>
+            SDValue getAddrGlobalLargeGOT(NodeTy *N,EVT Ty,SelectionDAG &DAG,unsigned HiFlag,unsigned LoFlag,SDValue Chain,const MachinePointerInfo &PtrInfo) const
+            {
+                SDLoc DL(N);
+                SDValue Hi = DAG.getNode(Cpu0ISD::Hi,DL,Ty,getTargetNode(N,Ty,DAG,HiFlag));
+                Hi = DAG.getNode(ISD::ADD,DL,Ty,Hi,getGlobalReg(DAG,Ty));
+                SDValue Wrapper = DAG.getNode(Cpu0ISD::Wrapper,DL,Ty,Hi,getTargetNode(N,Ty,DAG,LoFlag));
+                return DAG.getLoad(Ty,DL,Chain,Wrapper,PtrInfo);
+            }
+
+            template<class NodeTy>
+            SDValue getAddrNonPIC(NodeTy *N,EVT Ty,SelectionDAG &DAG) const
+            {
+                SDLoc DL(N);
+                SDValue Hi = getTargetNode(N,Ty,DAG,Cpu0II::NO_ABS_HI);
+                SDValue Lo = getTargetNode(N,Ty,DAG,Cpu0II::NO_ABS_LO);
+                return DAG.getNode(ISD::ADD,DL,Ty,DAG.getNode(Cpu0ISD::Hi,DL,Ty,Hi),DAG.getNode(Cpu0ISD::Lo,DL,Ty,Lo));
+            }
+
             struct ByValArgInfo
             {
                 unsigned FirstIdx;
@@ -91,6 +140,8 @@ namespace llvm{
             };
 
         private:
+            SDValue getTargetNode(GlobalAddressSDNode *N, EVT Ty, SelectionDAG &DAG,unsigned Flag) const;
+            SDValue getTargetNode(ExternalSymbolSDNode *N, EVT Ty, SelectionDAG &DAG,unsigned Flag) const;
             SDValue LowerGlobalAddress(SDValue Op,SelectionDAG &DAG) const;
             SDValue LowerFormalArguments(SDValue Chain,
                                CallingConv::ID CallConv, bool IsVarArg,

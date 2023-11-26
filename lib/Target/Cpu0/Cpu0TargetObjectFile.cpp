@@ -31,3 +31,53 @@ void Cpu0TargetObjectFile::Initialize(MCContext &Ctx,const TargetMachine &TM)
     );
     this->TM = &static_cast<const Cpu0TargetMachine &>(TM);
 }
+
+static bool IsInSmallSection(uint64_t Size) {
+  return Size > 0 && Size <= SSThreshold;
+}
+
+bool Cpu0TargetObjectFile::
+IsGlobalInSmallSection(const GlobalObject *GO, const TargetMachine &TM) const {
+  if (GO->isDeclaration() || GO->hasAvailableExternallyLinkage())
+    return IsGlobalInSmallSectionImpl(GO, TM);
+
+  return IsGlobalInSmallSection(GO, TM, getKindForGlobal(GO, TM));
+}
+
+bool Cpu0TargetObjectFile::
+IsGlobalInSmallSection(const GlobalObject *GO, const TargetMachine &TM,
+                       SectionKind Kind) const {
+  return (IsGlobalInSmallSectionImpl(GO, TM) &&
+          (Kind.isData() || Kind.isBSS() || Kind.isCommon() ||
+           Kind.isReadOnly()));
+}
+
+bool Cpu0TargetObjectFile::
+IsGlobalInSmallSectionImpl(const GlobalObject *GO,
+                           const TargetMachine &TM) const {
+  const Cpu0Subtarget &Subtarget =
+      *static_cast<const Cpu0TargetMachine &>(TM).getSubtargetImpl();
+
+  if (!Subtarget.useSmallSection())
+    return false;
+
+  const GlobalVariable *GVA = dyn_cast<GlobalVariable>(GO);
+  if (!GVA)
+    return false;
+
+  Type *Ty = GVA->getValueType();
+  return IsInSmallSection(GVA->getParent()->getDataLayout().getTypeAllocSize(Ty));
+}
+
+MCSection *Cpu0TargetObjectFile::
+SelectSectionForGlobal(const GlobalObject *GO, SectionKind Kind,
+                       const TargetMachine &TM) const {
+  if (Kind.isBSS() && IsGlobalInSmallSection(GO, TM, Kind))
+    return SmallBSSSection;
+  if (Kind.isData() && IsGlobalInSmallSection(GO, TM, Kind))
+    return SmallDataSection;
+  if (Kind.isReadOnly() && IsGlobalInSmallSection(GO, TM, Kind))
+    return SmallDataSection;
+
+  return TargetLoweringObjectFileELF::SelectSectionForGlobal(GO, Kind, TM);
+}

@@ -18,7 +18,10 @@ namespace llvm{
             NO_ABS_HI,
             NO_ABS_LO,
             NO_GOT_HI16,
-            NO_GOT_LO16
+            NO_GOT_LO16,
+            MO_GOT16,
+            MO_GOT,
+
         };
 
         enum {

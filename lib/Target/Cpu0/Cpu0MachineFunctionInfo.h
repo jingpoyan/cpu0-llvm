@@ -23,6 +23,11 @@ namespace llvm{
 
             ~Cpu0MachineFunctionInfo();
 
+            bool globalBaseRegFixed() const;
+            bool globalBaseRegSet() const;
+            unsigned getGlobalBaseReg();
+
+
             unsigned getSRetReturnReg() const 
             {
                 return SRetReturnReg;
@@ -117,6 +122,8 @@ namespace llvm{
             int VarArgsFrameIndex;
             unsigned MaxCallFrameSize;
             bool EmitNOAT;
+            unsigned GlobalBaseReg;
+            int GPFI;
 
             unsigned SRetReturnReg;
             bool HasByvalArg;

@@ -44,6 +44,11 @@ BitVector Cpu0RegisterInfo::getReservedRegs(const MachineFunction &MF) const
         Reserved.set(ReserverdCPURegs[I]);
     }
 
+    #ifndef ENABLE_GPRESTORE
+      const Cpu0MachineFunctionInfo *Cpu0FI = MF.getInfo<Cpu0MachineFunctionInfo>();
+      if(Cpu0FI->globalBaseRegFixed())
+    #endif
+      Reserved.set(Cpu0::GP);
     return Reserved;
 }
 
@@ -52,7 +57,7 @@ void Cpu0RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,int SP
   MachineInstr &MI = *II;
   MachineFunction &MF = *MI.getParent()->getParent();
   MachineFrameInfo &MFI = MF.getFrameInfo();
-  Cpu0MachineFunctionInfo *Cpu0FI = MF.getInfo<Cpu0MachineFunctionInfo>();
+  //Cpu0MachineFunctionInfo *Cpu0FI = MF.getInfo<Cpu0MachineFunctionInfo>();
 
   unsigned i = 0;
   while (!MI.getOperand(i).isFI()) {
@@ -94,7 +99,7 @@ void Cpu0RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,int SP
                     << "<---------->\n");
 
   if (!MI.isDebugValue() && !isInt<16>(Offset)) {
-    assert("(!MI.isDebugValue() && !isInt<16>(Offset))");
+    assert(false && "(!MI.isDebugValue() && !isInt<16>(Offset))");
   }
 
   MI.getOperand(i).ChangeToRegister(FrameReg, false);

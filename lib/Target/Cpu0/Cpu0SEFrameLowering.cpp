@@ -122,8 +122,8 @@ void Cpu0SEFrameLowering::determineCalleeSaves(MachineFunction &MF,
                                                BitVector &SavedRegs,
                                                RegScavenger *RS) const {
   TargetFrameLowering::determineCalleeSaves(MF, SavedRegs, RS);
-  Cpu0MachineFunctionInfo *Cpu0FI = MF.getInfo<Cpu0MachineFunctionInfo>();
-  MachineRegisterInfo &MRI = MF.getRegInfo();
+  //Cpu0MachineFunctionInfo *Cpu0FI = MF.getInfo<Cpu0MachineFunctionInfo>();
+  //MachineRegisterInfo &MRI = MF.getRegInfo();
 
   if (MF.getFrameInfo().hasCalls())
     setAliasRegs(MF, SavedRegs, Cpu0::LR);

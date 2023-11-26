@@ -23,6 +23,7 @@ namespace llvm{
         
         protected:
             const Cpu0Subtarget *Subtarget;
+            SDNode *getGlobalBaseReg();
         private:
             #include "Cpu0GenDAGISel.inc"
 

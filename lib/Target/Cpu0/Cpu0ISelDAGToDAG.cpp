@@ -60,6 +60,32 @@ bool Cpu0DAGToDAGISel::SelectAddr(SDNode *Parent,SDValue Addr,SDValue &Base,SDVa
         return true;
     }
 
+    if(Addr.getOpcode() == Cpu0ISD::Wrapper)
+    {
+        Base = Addr.getOperand(0);
+        Offset = Addr.getOperand(1);
+        return true;
+    }
+    
+    if(TM.getRelocationModel() != Reloc::PIC_)
+    {
+        if((Addr.getOpcode() == ISD::TargetExternalSymbol || Addr.getOpcode() == ISD::TargetGlobalAddress))
+            return false;
+    }
+
+    if(CurDAG->isBaseWithConstantOffset(Addr))
+    {
+        ConstantSDNode *CN = dyn_cast<ConstantSDNode>(Addr.getOperand(1));
+        if(isInt<16>(CN->getSExtValue()))
+        {
+            if(FrameIndexSDNode *FIN=dyn_cast<FrameIndexSDNode>(Addr.getOperand(0)))
+                Base = CurDAG->getTargetFrameIndex(FIN->getIndex(),ValTy);
+            else
+                Base = Addr.getOperand(0);
+            Offset = CurDAG->getTargetConstant(CN->getZExtValue(),DL,ValTy);
+        }
+    }
+
     Base = Addr;
     Offset = CurDAG->getTargetConstant(0,DL,ValTy);
     return true;
@@ -87,6 +113,15 @@ void Cpu0DAGToDAGISel::Select(SDNode *Node)
     {
     default:
         break;
+    case ISD::GLOBAL_OFFSET_TABLE:
+        ReplaceNode(Node,getGlobalBaseReg());
+        return;
     }
     SelectCode(Node);
+}
+
+SDNode* Cpu0DAGToDAGISel::getGlobalBaseReg()
+{
+  unsigned GlobalBaseReg = MF->getInfo<Cpu0MachineFunctionInfo>()->getGlobalBaseReg();
+  return CurDAG->getRegister(GlobalBaseReg,getTargetLowering()->getPointerTy(CurDAG->getDataLayout())).getNode();    
 }

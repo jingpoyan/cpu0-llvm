@@ -9,12 +9,21 @@ def Cpu0DivRem : SDNode<"Cpu0ISD::DivRem",SDT_Cpu0DivRem,[SDNPOutGlue]>;
 def Cpu0DivRemU : SDNode<"Cpu0ISD::DivRemU",SDT_Cpu0DivRem,[SDNPOutGlue]>;
 
 
+def Cpu0Hi    : SDNode<"Cpu0ISD::Hi", SDTIntUnaryOp>;
+def Cpu0Lo    : SDNode<"Cpu0ISD::Lo", SDTIntUnaryOp>;
+def Cpu0GPRel : SDNode<"Cpu0ISD::GPRel", SDTIntUnaryOp>;
+
+def Cpu0Wrapper : SDNode<"Cpu0ISD::Wrapper", SDTIntBinOp>;
+
 
 def EnableOverflow  : Predicate<"Subtarget->enableOverflow()">;
 def DisableOverflow : Predicate<"Subtarget->disableOverflow()">;
 
 def HasCmp          : Predicate<"Subtarget->hasCmp()">;
 def HasSlt          : Predicate<"Subtarget->hasSlt()">;
+
+
+def RelocPIC        : Predicate<"TM.getRelocationModel() == Reloc::PIC_">;
 
 include "Cpu0InstrFormats.td"
 
@@ -37,6 +46,12 @@ def mem : Operand<iPTR>
     let PrintMethod = "printMemOperand";
     let MIOperandInfo = (ops CPURegs,simm16);
     let EncoderMethod = "getMemEncoding";
+}
+
+def mem_ea : Operand<iPTR> {
+  let PrintMethod = "printMemOperandEA";
+  let MIOperandInfo = (ops CPURegs, simm16);
+  let EncoderMethod = "getMemEncoding";
 }
 
 def immSExt16 : PatLeaf<(imm),[{return isInt<16>(N->getSExtValue());}]>;
@@ -80,7 +95,10 @@ class AlignedStore<PatFrag Node> : PatFrag<(ops node:$val,node:$ptr),(Node node:
 
 def load_a  : AlignedLoad<load>;
 def store_a : AlignedStore<store>;
-
+def sextloadi16_a   : AlignedLoad<sextloadi16>;
+def zextloadi16_a   : AlignedLoad<zextloadi16>;
+def extloadi16_a    : AlignedLoad<extloadi16>;
+def truncstorei16_a : AlignedStore<truncstorei16>;
 
 class ArithLogicI<bits<8> op, string instrAsm, SDNode opNode,
                   Operand od, PatLeaf immType, RegisterClass regClass>
@@ -287,8 +305,33 @@ class RetBase<RegisterClass regClass> : JumpFR<0x3c,"ret",regClass>
     let hasExtraSrcRegAllocReq = 1;
 }
 
+
+class CountLeading0<bits<8> op, string instrAsm, RegisterClass RC>
+  : FA<op, (outs GPROut:$ra), (ins RC:$rb), !strconcat(instrAsm, "\t$ra, $rb"),
+       [(set GPROut:$ra, (ctlz RC:$rb))], IICLZ> {
+  let rc = 0;
+  let shamt = 0;
+}
+
+class CountLeading1<bits<8> op, string instrAsm, RegisterClass RC>
+  : FA<op, (outs GPROut:$ra), (ins RC:$rb), !strconcat(instrAsm, "\t$ra, $rb"),
+       [(set GPROut:$ra, (ctlz (not RC:$rb)))], IICLO> {
+  let rc = 0;
+  let shamt = 0;
+}
+
+class EffectiveAddress<string instrAsm, RegisterClass RC, Operand mem>
+  : FMem<0x09, (outs RC:$ra), (ins mem:$addr), instrAsm,
+         [(set RC:$ra, addr:$addr)], IIAlu>;
+
 defm LD      : LoadM32<0x01,"ld",load_a>;
 defm ST      : StoreM32<0x02,"st",store_a>;
+defm LB      : LoadM32<0x03, "lb", sextloadi8>;
+defm LBu     : LoadM32<0x04, "lbu", zextloadi8>;
+defm SB      : StoreM32<0x05, "sb", truncstorei8>;
+defm LH      : LoadM32<0x06, "lh", sextloadi16_a>;
+defm LHu     : LoadM32<0x07, "lhu", zextloadi16_a>;
+defm SH      : StoreM32<0x08, "sh", truncstorei16_a>;
 
 def ADDiu    : ArithLogicI<0x09, "addiu", add, simm16, immSExt16, CPURegs>;
 def ORi      : ArithLogicI<0x0d, "ori", or, uimm16, immZExt16, CPURegs>;
@@ -358,6 +401,12 @@ def SLTu     : SetCC_R<0x29, "sltu", setult, CPURegs>;
 let addr=0 in
     def NOP : FJ<0,(outs),(ins),"nop",[],IIAlu>;
 
+def CLZ : CountLeading0<0x15, "clz", CPURegs>;
+def CLO : CountLeading1<0x16, "clo", CPURegs>;
+
+def LEA_ADDiu : EffectiveAddress<"addiu\t$ra, $addr", CPURegs, mem_ea> {
+  let isCodeGenOnly = 1;
+}
 
 let isReturn=1,isTerminator=1,hasDelaySlot=1,isBarrier=1,hasCtrlDep=1 in
 def RetLR : Cpu0Pseudo<(outs),(ins),"",[(Cpu0Ret)]>;
@@ -371,6 +420,22 @@ def : Pat<(i32 imm:$imm),
 
 def : Pat<(not CPURegs:$in),
           (XORi CPURegs:$in, 1)>;
+
+def : Pat<(i32 (extloadi1  addr:$src)), (LBu addr:$src)>;
+def : Pat<(i32 (extloadi8  addr:$src)), (LBu addr:$src)>;
+def : Pat<(i32 (extloadi16_a addr:$src)), (LHu addr:$src)>;
+
+def : Pat<(Cpu0Hi tglobaladdr:$in), (LUi tglobaladdr:$in)>;
+def : Pat<(Cpu0Lo tglobaladdr:$in), (ORi ZERO, tglobaladdr:$in)>;
+def : Pat<(add CPURegs:$hi, (Cpu0Lo tglobaladdr:$lo)),
+          (ORi CPURegs:$hi, tglobaladdr:$lo)>;
+
+def : Pat<(add CPURegs:$gp, (Cpu0GPRel tglobaladdr:$in)),
+          (ORi CPURegs:$gp, tglobaladdr:$in)>;
+
+class WrapperPat<SDNode node, Instruction ORiOp, RegisterClass RC>
+  : Pat<(Cpu0Wrapper RC:$gp, node:$in), (ORiOp RC:$gp, node:$in)>;
+def : WrapperPat<tglobaladdr, ORi, GPROut>;
 
 multiclass SeteqPatsCmp<RegisterClass RC> {
   def : Pat<(seteq RC:$lhs, RC:$rhs),

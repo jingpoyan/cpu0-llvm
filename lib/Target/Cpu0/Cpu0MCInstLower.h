@@ -22,6 +22,8 @@ public:
   void Initialize(MCContext *C);
   void Lower(const MachineInstr *MI, MCInst &OutMI) const;
   MCOperand LowerOperand(const MachineOperand &MO, unsigned offset = 0) const;
+  void LowerCPLOAD(SmallVector<MCInst,4>& MCInsts);
+  MCOperand LowerSymbolOperand(const MachineOperand &MO,MachineOperandType MOTy,unsigned Offset) const;
 };
 
 }

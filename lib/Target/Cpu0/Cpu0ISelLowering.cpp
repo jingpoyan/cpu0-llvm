@@ -3,7 +3,7 @@
 #include"Cpu0TargetMachine.h"
 #include"Cpu0TargetObjectFile.h"
 #include"Cpu0Subtarget.h"
-
+#include "MCTargetDesc/Cpu0BaseInfo.h"
 #include"llvm/ADT/Statistic.h"
 #include"llvm/CodeGen/CallingConvLower.h"
 #include"llvm/CodeGen/MachineFrameInfo.h"
@@ -57,15 +57,43 @@ Cpu0TargetLowering::Cpu0TargetLowering(const Cpu0TargetMachine &TM,
     setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i16, Expand);
     setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i32, Expand);
     setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::Other, Expand);
+    
+    setOperationAction(ISD::GlobalAddress,MVT::i32,Custom);
+
+    setOperationAction(ISD::SHL_PARTS,MVT::i32,Expand);
+    setOperationAction(ISD::SRA_PARTS,MVT::i32,Expand);
+    setOperationAction(ISD::SRL_PARTS,MVT::i32,Expand);
 
     setTargetDAGCombine(ISD::SDIVREM);
     setTargetDAGCombine(ISD::UDIVREM);
+
+    setBooleanContents(ZeroOrOneBooleanContent);
+    setBooleanVectorContents(ZeroOrNegativeOneBooleanContent);
+
+    for(MVT VT: MVT::integer_valuetypes())
+    {
+        setLoadExtAction(ISD::EXTLOAD, VT, MVT::i1, Promote);
+        setLoadExtAction(ISD::ZEXTLOAD, VT, MVT::i1, Promote);
+        setLoadExtAction(ISD::SEXTLOAD, VT, MVT::i1, Promote);
+    }
 }
 
 const Cpu0TargetLowering* Cpu0TargetLowering::create(const Cpu0TargetMachine &TM,
                                                      const Cpu0Subtarget &STI)
 {
     return createCpu0SETargetLowering(TM,STI);                                                        
+}
+
+EVT Cpu0TargetLowering::getSetCCResultType(const DataLayout &,LLVMContext &,EVT VT) const
+{
+    if(!VT.isVector())
+        return MVT::i32;
+    return VT.changeVectorElementTypeToInteger();
+}
+
+bool Cpu0TargetLowering::isOffsetFoldingLegal(const GlobalAddressSDNode *GA) const
+{
+    return false;
 }
 
 static SDValue performDivRemCombine(SDNode* N,SelectionDAG& DAG,TargetLowering::DAGCombinerInfo &DCI,const Cpu0Subtarget &Subraget)
@@ -239,4 +267,68 @@ Cpu0TargetLowering::Cpu0CC::Cpu0CC(
   Cpu0CC::SpecialCallingConvType SpecialCallingConv_)
   : CCInfo(Info), CallConv(CC), IsO32(IsO32_) {
   CCInfo.AllocateStack(reservedArgArea(), 1);
+}
+
+SDValue Cpu0TargetLowering::getGlobalReg(SelectionDAG &DAG, EVT Ty) const {
+  Cpu0MachineFunctionInfo *FI = DAG.getMachineFunction()
+      .getInfo<Cpu0MachineFunctionInfo>();
+  return DAG.getRegister(FI->getGlobalBaseReg(), Ty);
+}
+
+SDValue Cpu0TargetLowering::getTargetNode(GlobalAddressSDNode *N, EVT Ty,
+                                          SelectionDAG &DAG,
+                                          unsigned Flag) const {
+  return DAG.getTargetGlobalAddress(N->getGlobal(), SDLoc(N), Ty, 0, Flag);
+}
+
+SDValue Cpu0TargetLowering::getTargetNode(ExternalSymbolSDNode *N, EVT Ty,
+                                          SelectionDAG &DAG,
+                                          unsigned Flag) const {
+  return DAG.getTargetExternalSymbol(N->getSymbol(), Ty, Flag);
+}
+
+SDValue Cpu0TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
+  switch (Op.getOpcode()) {
+  case ISD::GlobalAddress:  return LowerGlobalAddress(Op, DAG);
+  }
+  return SDValue();
+}
+
+SDValue Cpu0TargetLowering::LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  const Cpu0TargetObjectFile *TLOF =
+      static_cast<const Cpu0TargetObjectFile *>(
+          getTargetMachine().getObjFileLowering());
+
+  EVT Ty = Op.getValueType();
+  GlobalAddressSDNode *N = cast<GlobalAddressSDNode>(Op);
+  const GlobalValue *GV = N->getGlobal();
+  const GlobalObject *GO = GV->getBaseObject();
+
+  if (!isPositionIndependent()) {
+    // %gp_rel relocation
+    if (GO && TLOF->IsGlobalInSmallSection(GO, getTargetMachine())) {
+      SDValue GA = DAG.getTargetGlobalAddress(GV, DL, MVT::i32, 0,
+                                              Cpu0II::MO_GPREL);
+      SDValue GPRelNode = DAG.getNode(Cpu0ISD::GPRel, DL,
+                                      DAG.getVTList(MVT::i32), GA);
+      SDValue GPReg = DAG.getRegister(Cpu0::GP, MVT::i32);
+      return DAG.getNode(ISD::ADD, DL, MVT::i32, GPReg, GPRelNode);
+    }
+
+    // %hi/%lo relocation
+    return getAddrNonPIC(N, Ty, DAG);
+  }
+
+  if (GV->hasInternalLinkage() || (GV->hasLocalLinkage() && !isa<Function>(GV)))
+    return getAddrLocal(N, Ty, DAG);
+
+  // large section
+  if (!TLOF->IsGlobalInSmallSection(GO, getTargetMachine()))
+    return getAddrGlobalLargeGOT(N, Ty, DAG, Cpu0II::NO_GOT_HI16,
+                                 Cpu0II::NO_GOT_LO16, DAG.getEntryNode(),
+                                 MachinePointerInfo::getGOT(DAG.getMachineFunction()));
+  return getAddrGlobal(N, Ty, DAG, Cpu0II::MO_GOT, DAG.getEntryNode(),
+                       MachinePointerInfo::getGOT(DAG.getMachineFunction()));
+
 }
